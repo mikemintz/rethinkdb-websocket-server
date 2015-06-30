@@ -19,10 +19,14 @@ Each query sent from the WebSocket is parsed and validated before being
 forwarded to RethinkDB. This is done using a whitelist of pattern queries,
 described in the involved example below.
 
-This library can be used in conjunction with
-[rethinkdb-websocket-client](https://github.com/mikemintz/rethinkdb-websocket-client),
-a WebSocket wrapper around the RethinkDB JavaScript driver that works in the
-browser.
+The provided WebSocket server can be used in conjunction with any of the
+following clients:
+* [rethinkdb-websocket-client](https://github.com/mikemintz/rethinkdb-websocket-client)
+  is a WebSocket wrapper around the RethinkDB JavaScript driver that works in
+  the browser.
+* [react-rethinkdb](https://github.com/mikemintz/react-rethinkdb) is a
+  [React](http://facebook.github.io/react/) mixin that connects using
+  rethinkdb-websocket-client.
 
 ## How do I use this?
 
