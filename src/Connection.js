@@ -34,6 +34,7 @@ export class Connection {
   }
 
   setupDbSocket() {
+    this.dbSocket.setNoDelay();
     this.dbSocket.on('data', data => {
       if (!this.isClosed) {
         try {
