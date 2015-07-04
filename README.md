@@ -56,6 +56,7 @@ running at `rethink01.example.com:28015`. We also serve static files in the
 
 Rather than enabling `unsafelyAllowAnyQuery`, we explicitly set up a query
 whitelist. This one only allows two query patterns:
+
 1. Queries that list `turtles` with the same `herdId` as the authenticated user
 2. Queries that insert `turtles` with a non-empty `name` and a `herdId`
    referring to the primary key of an object in the `herds` table
