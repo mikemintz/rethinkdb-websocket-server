@@ -10,7 +10,7 @@ const QueryType = protodef.Query.QueryType;
 const {START, CONTINUE, STOP, NOREPLY_WAIT} = QueryType;
 
 const queryTypeString = queryType => (
-  Object.keys(QueryType).find(x => QueryType[x] === queryType)
+  Object.keys(QueryType).filter(x => QueryType[x] === queryType)[0]
 );
 
 // Compare the pattern RQ to the actual RQ to see if they match, and return a
