@@ -1,4 +1,5 @@
 [![npm version](https://img.shields.io/npm/v/rethinkdb-websocket-server.svg)](https://www.npmjs.com/package/rethinkdb-websocket-server)
+[![Travis](https://img.shields.io/travis/mikemintz/rethinkdb-websocket-server.svg)](https://travis-ci.org/mikemintz/rethinkdb-websocket-server)
 
 # rethinkdb-websocket-server
 
