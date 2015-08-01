@@ -40,7 +40,11 @@ export function listen({
   sessionCreator = (urlQueryParams) => Promise.resolve({}),
 
 }) {
-  const wsServer = new WebSocketServer({server: httpServer, path: httpPath});
+  const wsServer = new WebSocketServer({
+    server: httpServer,
+    path: httpPath,
+    perMessageDeflate: false, // necessary due to https://github.com/websockets/ws/issues/523
+  });
   const queryValidator = new QueryValidator({queryWhitelist, unsafelyAllowAnyQuery});
   wsServer.on('connection', webSocket => {
     const connection = new Connection(queryValidator, webSocket);
