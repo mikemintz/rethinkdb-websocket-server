@@ -5,6 +5,7 @@ import {
   isArr,
   isObj,
   arrEq,
+  objEq,
   ensure,
   repeatString,
 } from '../src/util';
@@ -58,7 +59,28 @@ describe('util', () => {
   });
 
   describe('objEq', () => {
-    it.skip('works');
+    const strictEqual = (x, y) => x === y;
+    const strictUnequal = (x, y) => x !== y;
+    const equalObjects = [
+      [{}, {}, strictEqual],
+      [{}, {}, strictUnequal],
+      [{a: 1, b: 2, c: 3}, {a: 1, b: 2, c: 3}, strictEqual],
+      [{a: 1, b: 2, c: 3}, {c: 3, b: 2, a: 1}, strictEqual],
+      [{a: 1, b: 2, c: 3}, {a: 4, b: 5, c: 6}, strictUnequal],
+    ];
+    const unequalObjects = [
+      [{}, {a: 1, b: 2, c: 3}, strictEqual],
+      [{a: 1, b: 2, c: 3}, {a: 1, b: 2, c: 3}, strictUnequal],
+      [{a: 1, b: 2, c: 3}, {a: 4, b: 5, c: 6}, strictEqual],
+    ];
+    it('returns true for equal objects', () => {
+      assert(equalObjects.every(([a1, a2, elemEq]) => objEq(a1, a2, elemEq)));
+      assert(equalObjects.every(([a1, a2, elemEq]) => objEq(a2, a1, elemEq)));
+    });
+    it('returns false for unequal objects', () => {
+      assert(!unequalObjects.some(([a1, a2, elemEq]) => objEq(a1, a2, elemEq)));
+      assert(!unequalObjects.some(([a1, a2, elemEq]) => objEq(a2, a1, elemEq)));
+    });
   });
 
   describe('ensure', () => {

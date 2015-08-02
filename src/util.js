@@ -9,11 +9,13 @@ export const arrEq = (a1, a2, elemEq) => (
 const strEq = (s1, s2) => s1 === s2;
 
 export const objEq = (o1, o2, valueEq) => {
-  // TODO This returns false if the objects have different key orderings. While
-  // that's technically incorrect, it may be necessary if RethinkDB's behavior
-  // depends on object key ordering. This requires further investigation.
+  // It is safe to consider two objects in a reql query to be identical even if
+  // their keys are ordered differently in JSON.
+  // https://groups.google.com/forum/#!msg/rethinkdb/-3VjyzyfW9o/hmR3ZFCRBwAJ
   const keys1 = Object.keys(o1);
   const keys2 = Object.keys(o2);
+  keys1.sort();
+  keys2.sort();
   const sameKeys = arrEq(keys1, keys2, strEq);
   return sameKeys && keys1.every(k => valueEq(o1[k], o2[k]));
 };
