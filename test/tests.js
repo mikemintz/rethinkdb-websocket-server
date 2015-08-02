@@ -1,5 +1,3 @@
-'use strict';
-
 /*eslint-env mocha */
 
 import assert from 'assert';

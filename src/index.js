@@ -1,5 +1,3 @@
-'use strict';
-
 import {Server as WebSocketServer} from 'ws';
 import {Promise} from 'bluebird';
 import {Connection} from './Connection';

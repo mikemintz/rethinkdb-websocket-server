@@ -1,5 +1,3 @@
-'use strict';
-
 import colors from 'colors/safe';
 import {isArr, isObj, arrEq, objEq} from './util';
 import Promise from 'bluebird';

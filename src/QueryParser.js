@@ -1,5 +1,3 @@
-'use strict';
-
 import protodef from 'rethinkdb/proto-def';
 import {isArr, isObj, ensure, repeatString} from './util';
 

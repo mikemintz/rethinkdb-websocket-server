@@ -1,5 +1,3 @@
-'use strict';
-
 import colors from 'colors/safe';
 import {errToString} from './util';
 import moment from 'moment';

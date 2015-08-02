@@ -1,5 +1,3 @@
-'use strict';
-
 export const isArr = Array.isArray;
 
 export const isObj = x => !!x && typeof x === 'object' && !isArr(x);
