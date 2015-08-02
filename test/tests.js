@@ -1,3 +1,7 @@
+'use strict';
+
+/*eslint-env mocha */
+
 import assert from 'assert';
 import http from 'http';
 import reqlite from 'reqlite';
@@ -17,7 +21,11 @@ function setupInstances({
     const dbPort = nextDbPort++; // TODO Ideally reqlite would let us pass 0 for next free port
     const httpServer = http.createServer();
 
-    const reqliteServer = new reqlite({'driver-port': dbPort, silent: true});
+    const reqliteOpts = {
+      'driver-port': dbPort,
+      silent: true,
+    };
+    const reqliteServer = new reqlite(reqliteOpts); //eslint-disable-line no-unused-vars
 
     const wsServerOpts = {
       httpServer,
