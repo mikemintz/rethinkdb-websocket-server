@@ -3,6 +3,7 @@ import {isArr, isObj, arrEq, objEq} from './util';
 import Promise from 'bluebird';
 import protodef from 'rethinkdb/proto-def';
 import {parseQuery, rqToString} from './QueryParser';
+import {reqlJsonToAst} from './ReqlAstBuilder';
 
 const QueryType = protodef.Query.QueryType;
 const {START, CONTINUE, STOP, NOREPLY_WAIT} = QueryType;
@@ -104,16 +105,18 @@ export class QueryValidator {
   // missing from the whitelist so that developers can easily copy those into
   // their whitelist source file as they write new queries in the frontend.
   validateQuery(token, query, queryOptions, session, logFn) {
-    return Promise.try(parseQuery, [query, queryOptions]).then(rq => {
-      return this.queryInWhitelist(rq, session).then(inWhitelist => {
-        const allow = this.unsafelyAllowAnyQuery || inWhitelist;
-        const allowText = allow ? colors.green('[ALLOW]') : colors.red('[DENY]');
-        const logMsgParts = [allowText, ' ', rqToString(rq)];
-        if (!inWhitelist) {
-          logMsgParts.push('\n\n', colors.cyan(rqToString(rq, 1, 2)), ',\n');
-        }
-        logFn(logMsgParts.join(''), token);
-        return Promise.resolve(allow);
+    return Promise.try(reqlJsonToAst, [query]).then(queryAst => {
+      return Promise.try(parseQuery, [query, queryOptions]).then(rq => {
+        return this.queryInWhitelist(rq, session).then(inWhitelist => {
+          const allow = this.unsafelyAllowAnyQuery || inWhitelist;
+          const allowText = allow ? colors.green('[ALLOW]') : colors.red('[DENY]');
+          const logMsgParts = [allowText, ' ', queryAst.toString()];
+          if (!inWhitelist) {
+            logMsgParts.push('\n\n', colors.cyan(rqToString(rq, 1, 2)), ',\n');
+          }
+          logFn(logMsgParts.join(''), token);
+          return Promise.resolve(allow);
+        });
       });
     });
   }
