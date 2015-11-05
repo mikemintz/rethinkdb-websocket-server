@@ -83,8 +83,8 @@ functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Fun
 var express = require('express');
 var http = require('http');
 var Promise = require('bluebird');
-var r = require('rethinkdb');
 var RethinkdbWebsocketServer = require('rethinkdb-websocket-server');
+var r = RethinkdbWebsocketServer.r;
 var RQ = RethinkdbWebsocketServer.RQ;
 
 var options = {};

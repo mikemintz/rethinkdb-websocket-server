@@ -2,6 +2,12 @@ import {Server as WebSocketServer} from 'ws';
 import {Promise} from 'bluebird';
 import {Connection} from './Connection';
 import {QueryValidator} from './QueryValidator';
+import rethinkdb from 'rethinkdb';
+
+// Make sure to import r from rethinkdb-websocket-server instead of directly
+// from rethinkdb to ensure you're using the same instance of the library when
+// defining whitelisted queries.
+export const r = rethinkdb;
 
 // Use RQ to construct query patterns for queryWhitelist. See QueryParser.js and
 // QueryValidator.js for more information.
