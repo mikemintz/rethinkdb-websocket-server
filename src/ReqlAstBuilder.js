@@ -1,4 +1,5 @@
 import protodef from 'rethinkdb/proto-def';
+import r from 'rethinkdb';
 import reqlTermExamples from './ReqlTermExamples';
 import {isArr, isObj, ensure} from './util';
 
@@ -49,8 +50,10 @@ const reqlJsonToAst = term => {
       result[key] = reqlJsonToAst(term[key]);
     });
     return result;
+  } else if (term === undefined) {
+    return undefined;
   } else {
-    return term;
+    return r.expr(term);
   }
 };
 
