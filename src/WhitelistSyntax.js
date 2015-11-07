@@ -1,5 +1,6 @@
 import {isArr, isObj, arrEq, objEq, ensure} from './util';
 import Promise from 'bluebird';
+import protodef from 'rethinkdb/proto-def';
 import reqlTermExamples from './ReqlTermExamples';
 
 const DatumTerm = reqlTermExamples.DATUM.constructor;
@@ -113,20 +114,63 @@ const isReqlAstTerm = obj => obj instanceof TermBase;
 // are no validate functions. Resolve to false if the query data doesn't match or
 // any validate function doesn't return true.
 const astQueryMatches = (patternQuery, actualQuery, session) => {
+  // Track refs from RP.ref() for use in validate()
   const refs = {};
+
+  // Map reql function var ids from pattern to actual, since they are generated
+  // non-deterministically. This prevents us from rejecting incoming queries
+  // that only differ from pattern queries in the numerical values of their var
+  // ids.
+  const varIdMap = {};
+
+  // Check if the specified protocol JSON term is well formed
+  const isValidTerm = term => (
+    term.length <= 3
+    && typeof term[0] === 'number'
+    && isArr(term[1])
+    && term[2] === undefined || isObj(term[2])
+  );
+
   const deepMatch = (pattern, actual) => {
     if (pattern instanceof Function) {
       return pattern(actual, refs, session);
     } else if (isArr(pattern)) {
-      const isValidTerm = x => x.length <= 3 && isArr(x[1]);
-      const [patternTermId, patternArgs, patternOpts] = pattern;
-      const [actualTermId, actualArgs, actualOpts] = actual;
+      let [patternTermId, patternArgs, patternOpts] = pattern;
+      let [actualTermId, actualArgs, actualOpts] = actual;
       const metadataMatches = isValidTerm(pattern)
                               && isValidTerm(actual)
                               && patternTermId === actualTermId
                               && deepMatch(patternOpts, actualOpts);
       if (!metadataMatches) {
         return false;
+      }
+      // Use varIdMap to compare var ids in FUNC and VAR terms
+      if (patternTermId === protodef.Term.TermType.FUNC) {
+        // The term looks like [FUNC, [[MAKE_ARRAY, [1, 2]], ...]]
+        const isValidFuncArgs = x => (
+          isValidTerm(x)
+          && x[0] === protodef.Term.TermType.MAKE_ARRAY
+          && x[1].filter(y => typeof y !== 'number').length === 0
+          && Object.keys(x[2] || {}).length === 0
+        );
+        // Check that first arg looks like [MAKE_ARRAY, [1, 2]]
+        if (!isValidFuncArgs(patternArgs[0]) || !isValidFuncArgs(actualArgs[0])) {
+          return false;
+        }
+        const patternVarIds = patternArgs[0][1];
+        const actualVarIds = actualArgs[0][1];
+        if (patternVarIds.length !== actualVarIds.length) {
+          return false;
+        }
+        patternVarIds.forEach((patternVarId, index) => {
+          ensure(!(patternVarId in varIdMap), 'Repeated var id in pattern query');
+          varIdMap[patternVarId] = actualVarIds[index];
+        });
+        patternArgs = patternArgs.slice(1);
+        actualArgs = actualArgs.slice(1);
+      } else if (patternTermId === protodef.Term.TermType.VAR) {
+        // The term looks like [VAR, [1]]
+        patternArgs = patternArgs.map(x => varIdMap[x]);
       }
       return arrEq(patternArgs, actualArgs, deepMatch);
     } else if (isObj(pattern)) {
