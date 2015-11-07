@@ -154,3 +154,104 @@ options.httpPath = '/rethinkApi';
 RethinkdbWebsocketServer.listen(options);
 httpServer.listen(8000);
 ```
+
+## Query whitelist syntax
+
+Before rethinkdb-websocket-server 0.3.0, the syntax for expressing whitelist
+queries closely reflected the RethinkDB JSON protocol sent over the wire. The
+`RQ` object made this a bit more readable, e.g. `RQ.TABLE("turtles")` instead
+of `[15, ["turtles"]]`.
+
+Starting with version 0.3.0, there is a new experimental "vanilla" syntax that
+looks much closer to ordinary ReQL. As this becomes more stable, the vanilla
+syntax will be recommended and the old RQ syntax will be deprecated and
+ultimately removed.
+
+In the 0.3 releases, the whitelist can contain pattern queries from either
+syntax. This makes it easy to migrate queries to the new syntax one at a time.
+Incoming queries are logged in both formats.
+
+At least until there is a stable RethinkDB release with the [toString()
+fix](https://github.com/rethinkdb/rethinkdb/issues/2372), the vanilla syntax
+will remain experimental.
+
+### RQ/vanilla syntax comparison
+
+* Both RQ and vanilla syntax chain `.validate(fn)` after queries to add
+  validation functions.
+* Both RQ and vanilla syntax chain `.opt(key, value)` after queries to set
+  query options like `db and `durability`.
+  * However, the `value` argument can differ in syntax: `.opt("db",
+    RQ.DB("test"))` vs `.opt("db", r.db("test")`.
+* `RQ.ref(refName)` in the RQ syntax has been changed to `RP.ref(refName)`
+  * RP stands for **R**eQL **P**attern, and separating the RQ and RP object helps
+    ensure you are using the right syntax version.
+* Pattern functions like `function(actual, refs, session) {...}` in the RQ
+  syntax must now be wrapped in `RP.check(function(actual, refs, session)
+  {...}`.
+  * This is necessary because JavaScript functions would otherwise be ambiguous
+    in the ReQL AST. I.e. `r.filter(function(x) {...})` should only be able to
+    specify a filter function, not a whitelist pattern function.
+* The biggest difference: the underlying syntax is completely different.
+  * In the RQ syntax, the expressions represent the underlying JSON protocol,
+  whereas the vanilla syntax is the same as writing ReQL with the JavaScript
+  driver. The following queries are equivalent:
+  * `RQ(RQ.FILTER(RQ.TABLE("turtles"), {"herdId": RQ.ref('herdId')}))`
+  * `r.table("turtles").filter({"herdId": RP.ref('herdId')})`
+
+### Vanilla syntax example
+
+Below is the query whitelist excerpt of the "involved example" above, rewritten
+with the vanilla syntax:
+
+```js
+var RP = RethinkdbWebsocketServer.RP;
+
+options.queryWhitelist = [
+  r.table('turtles')
+   .filter({"herdId": RP.ref('herdId')})
+   .opt("db", r.db("test"))
+   .validate(function(refs, session) {
+     return session.curHerdId === refs.herdId;
+   }),
+
+  r.table('turtles')
+   .insert({
+     "herdId": RP.ref('herdId'),
+     "name": RP.check(function(actual, refs, session) {
+       return typeof actual === 'string' && actual.trim();
+     }),
+   })
+   .opt("db", r.db("test"))
+   .validate(function(refs) {
+     var herdId = refs.herdId;
+     if (typeof herdId !== 'string') return false;
+     var validHerdQuery = r.table('herds').get(herdId).ne(null);
+     return runQuery(validHerdQuery);
+   }),
+];
+```
+
+Written a bit more concisely, and with some ES6 syntax, this becomes:
+
+```js
+var {RP} = RethinkdbWebsocketServer;
+
+options.queryWhitelist = [
+  r.table('turtles')
+   .filter({herdId: RP.ref('herdId')})
+   .opt("db", r.db("test"))
+   .validate(({herdId}, session) => session.curHerdId === herdId),
+
+  r.table('turtles')
+   .insert({
+     herdId: RP.ref('herdId'),
+     name: RP.check(x => typeof x === 'string' && x.trim())
+   })
+   .opt("db", r.db("test"))
+   .validate(({herdId}) => (
+     typeof herdId !== 'string' &&
+     runQuery(r.table('herds').get(herdId).ne(null))
+   )),
+];
+```
