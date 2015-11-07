@@ -114,12 +114,17 @@ export class QueryValidator {
   // missing from the whitelist so that developers can easily copy those into
   // their whitelist source file as they write new queries in the frontend.
   validateQuery(token, query, queryOptions, session, logFn) {
-    return Promise.try(reqlJsonToAst, [query]).then(queryAst => {
+    return Promise.try(reqlJsonToAst, [{query, queryOptions}]).then(ast => {
       return Promise.try(parseQuery, [query, queryOptions]).then(rq => {
-        return this.queryInWhitelist(rq, queryAst, session).then(inWhitelist => {
+        return this.queryInWhitelist(rq, ast.query, session).then(inWhitelist => {
           const allow = this.unsafelyAllowAnyQuery || inWhitelist;
           const allowText = allow ? colors.green('[ALLOW]') : colors.red('[DENY]');
-          const logMsgParts = [allowText, ' ', queryAst.toString()];
+          const logMsgParts = [allowText, ' ', ast.query.toString()];
+          Object.keys(ast.queryOptions).forEach(x => {
+            const key = JSON.stringify(x);
+            const value = ast.queryOptions[x].toString();
+            logMsgParts.push('.opt(', key, ', ', value, ')');
+          });
           if (!inWhitelist) {
             logMsgParts.push('\n\n', colors.cyan(rqToString(rq, 1, 2)), ',\n');
           }
