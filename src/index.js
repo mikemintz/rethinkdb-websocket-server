@@ -9,6 +9,10 @@ import rethinkdb from 'rethinkdb';
 // defining whitelisted queries.
 export const r = rethinkdb;
 
+// Use RP to construct query patterns for queryWhitelist. See
+// WhitelistSyntax.js and QueryValidator.js for more information.
+export {ReqlPattern as RP} from './WhitelistSyntax';
+
 // Use RQ to construct query patterns for queryWhitelist. See QueryParser.js and
 // QueryValidator.js for more information.
 export {RQ} from './QueryParser';

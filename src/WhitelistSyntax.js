@@ -1,3 +1,4 @@
+import {isArr, isObj, arrEq, objEq, ensure} from './util';
 import Promise from 'bluebird';
 import reqlTermExamples from './ReqlTermExamples';
 
@@ -9,11 +10,92 @@ const TermBase = RDBVal.__super__.constructor;
 // method takes a validation function as its only argument and appends it to
 // the list of validate functions stored with this AST term. The validate
 // method returns the updated AST term so that it can be chained with other
-// calls. See QueryValidator.js for more information.
+// calls. See astQueryMatches() below for more information.
 TermBase.prototype.validate = function(validateFn) {
   this.validateFns = this.validateFns || [];
   this.validateFns.push(validateFn);
   return this;
+};
+
+
+// ReqlPatternTerm is an AST term that represents a pattern matching function
+// inside a whitelist query.
+//
+// When an incoming query is matched against a pattern query, a term in the
+// actual query that corresponds to this ReqlPatternTerm in the pattern query
+// will cause us to run the supplied function as fn(actualTerm, refs, session),
+// and it must return a boolean that determines whether the actual term matches
+// the pattern.
+class ReqlPatternTerm extends DatumTerm {
+  constructor(fn) {
+    super();
+    ensure(fn instanceof Function, 'RP.check() requires a function argument');
+    this.fn = fn;
+  }
+
+  build() {
+    return this.fn;
+  }
+
+  compose() {
+    return this.fn.toString();
+  }
+}
+
+
+// ReqlPattern (exported to clients as RP) provides methods to construct
+// whitelist queries that offer more sophisticated pattern matching than just
+// exact match.
+const ReqlPattern = {
+
+  // When any term in a pattern query is created from RP.check(fn), it matches
+  // the corresponding term in the actual query if and only if  fn(actualTerm,
+  // refs, session) returns true. It must return a boolean, not a promise.
+  //
+  // The actualTerm argument is the JSON protocol encoding of the corresponding
+  // term. For primitives (strings, numbers, and booleans), actualTerm will
+  // just be that same primitive; but for arrays, objects, and other reql
+  // terms, the JSON protocol encoding becomes relevant. The same applies for
+  // RP.ref below.
+  //
+  // The refs argument is an object that can be used to keep track of terms in
+  // the query so that the validate functions can refer to them easily. It starts
+  // out as {} every time a query is validated. RP.check functions can mutate it.
+  //
+  // The session argument is used to track any state regarding the current
+  // WebSocket client, for example the current user id. See the sessionCreator
+  // option in index.js for more information.
+  check(fn) {
+    return new ReqlPatternTerm(fn);
+  },
+
+  // When any term in a pattern query is created from RP.ref(refName), it
+  // always matches and then stores the corresponding term from the actual
+  // query in refs[refName]. Like RP.check, it stores the JSON protocol
+  // encoding of the corresponding term.
+  //
+  // Use RP.ref() to simplify keeping track of terms for validations. For
+  // example, instead of:
+  //
+  // r.table("turtles")
+  //  .filter({"herdId": RP.check((herdId, refs, session) => {
+  //    refs.herdId = herdId;
+  //    return true;
+  //  })})
+  //  .validate((refs, session) => session.curHerdId === refs.herdId)
+  //
+  // Try this instead:
+  //
+  // r.table("turtles")
+  //  .filter({"herdId": RP.ref("herdId")})
+  //  .validate((refs, session) => session.curHerdId === refs.herdId)
+  ref(refName) {
+    return new ReqlPatternTerm((value, refs, session) => {
+      refs[refName] = value;
+      return true;
+    });
+  },
+
 };
 
 
@@ -25,14 +107,25 @@ const isReqlAstTerm = obj => obj instanceof TermBase;
 // return a promise that resolves to true (false) if they matched (didn't
 // match). Both queries should be in rethinkdb AST term form.
 //
-// Right now, this only supports exact query patterns, but it will soon be
-// updated to support pattern functions and refs.
+// If the actual query matches the pattern query data, then all of validate functions
+// set on the pattern query will be called as validateFn(refs, session). Resolve
+// to true if they all return true (or promises that resolve to true) or there
+// are no validate functions. Resolve to false if the query data doesn't match or
+// any validate function doesn't return true.
 const astQueryMatches = (patternQuery, actualQuery, session) => {
   const refs = {};
   const deepMatch = (pattern, actual) => {
-    return JSON.stringify(pattern.build()) === JSON.stringify(actual.build());
+    return (
+      pattern === actual
+    ) || (
+      pattern instanceof Function && pattern(actual, refs, session)
+    ) || (
+      isArr(pattern) && isArr(actual) && arrEq(pattern, actual, deepMatch)
+    ) || (
+      isObj(pattern) && isObj(actual) && objEq(pattern, actual, deepMatch)
+    );
   };
-  if (deepMatch(patternQuery, actualQuery)) {
+  if (deepMatch(patternQuery.build(), actualQuery.build())) {
     const validateFns = patternQuery.validateFns || [];
     const promises = validateFns.map(fn => fn(refs, session));
     return Promise.all(promises).then(results => results.every(x => x));
@@ -41,7 +134,9 @@ const astQueryMatches = (patternQuery, actualQuery, session) => {
   }
 };
 
+
 export {
+  ReqlPattern,
   isReqlAstTerm,
   astQueryMatches,
 };
