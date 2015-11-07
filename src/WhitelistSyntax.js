@@ -115,15 +115,14 @@ const isReqlAstTerm = obj => obj instanceof TermBase;
 const astQueryMatches = (patternQuery, actualQuery, session) => {
   const refs = {};
   const deepMatch = (pattern, actual) => {
-    return (
-      pattern === actual
-    ) || (
-      pattern instanceof Function && pattern(actual, refs, session)
-    ) || (
-      isArr(pattern) && isArr(actual) && arrEq(pattern, actual, deepMatch)
-    ) || (
-      isObj(pattern) && isObj(actual) && objEq(pattern, actual, deepMatch)
-    );
+    if (pattern instanceof Function) {
+      return pattern(actual, refs, session);
+    } else if (isArr(pattern)) {
+      return isArr(actual) && arrEq(pattern, actual, deepMatch);
+    } else if (isObj(pattern)) {
+      return isObj(actual) && objEq(pattern, actual, deepMatch);
+    }
+    return pattern === actual;
   };
   if (deepMatch(patternQuery.build(), actualQuery.build())) {
     const validateFns = patternQuery.validateFns || [];
