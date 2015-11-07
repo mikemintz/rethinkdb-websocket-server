@@ -118,7 +118,17 @@ const astQueryMatches = (patternQuery, actualQuery, session) => {
     if (pattern instanceof Function) {
       return pattern(actual, refs, session);
     } else if (isArr(pattern)) {
-      return isArr(actual) && arrEq(pattern, actual, deepMatch);
+      const isValidTerm = x => x.length <= 3 && isArr(x[1]);
+      const [patternTermId, patternArgs, patternOpts] = pattern;
+      const [actualTermId, actualArgs, actualOpts] = actual;
+      const metadataMatches = isValidTerm(pattern)
+                              && isValidTerm(actual)
+                              && patternTermId === actualTermId
+                              && deepMatch(patternOpts, actualOpts);
+      if (!metadataMatches) {
+        return false;
+      }
+      return arrEq(patternArgs, actualArgs, deepMatch);
     } else if (isObj(pattern)) {
       return isObj(actual) && objEq(pattern, actual, deepMatch);
     }
