@@ -1,6 +1,7 @@
 import {isArr, isObj, arrEq, objEq, ensure} from './util';
 import Promise from 'bluebird';
 import protodef from 'rethinkdb/proto-def';
+import r from 'rethinkdb';
 import reqlTermExamples from './ReqlTermExamples';
 
 const DatumTerm = reqlTermExamples.DATUM.constructor;
@@ -15,6 +16,16 @@ const TermBase = RDBVal.__super__.constructor;
 TermBase.prototype.validate = function(validateFn) {
   this.validateFns = this.validateFns || [];
   this.validateFns.push(validateFn);
+  return this;
+};
+
+
+// Monkey-patch rethinkdb driver AST terms with an opt method, similar to
+// validate() above. It stores excepted query option key/value pairs, so that
+// pattern queries can check options like db and durability.
+TermBase.prototype.opt = function(key, value) {
+  this.queryOptions = this.queryOptions || {};
+  this.queryOptions[key] = r.expr(value);
   return this;
 };
 
@@ -113,7 +124,7 @@ const isReqlAstTerm = obj => obj instanceof TermBase;
 // to true if they all return true (or promises that resolve to true) or there
 // are no validate functions. Resolve to false if the query data doesn't match or
 // any validate function doesn't return true.
-const astQueryMatches = (patternQuery, actualQuery, session) => {
+const astQueryMatches = (patternQuery, actualQuery, actualQueryOptions, session) => {
   // Track refs from RP.ref() for use in validate()
   const refs = {};
 
@@ -178,7 +189,10 @@ const astQueryMatches = (patternQuery, actualQuery, session) => {
     }
     return pattern === actual;
   };
-  if (deepMatch(patternQuery.build(), actualQuery.build())) {
+  const buildOpts = opts => r.expr(opts || {}).build();
+  const isMatch = deepMatch(patternQuery.build(), actualQuery.build())
+  && deepMatch(buildOpts(patternQuery.queryOptions), buildOpts(actualQueryOptions));
+  if (isMatch) {
     const validateFns = patternQuery.validateFns || [];
     const promises = validateFns.map(fn => fn(refs, session));
     return Promise.all(promises).then(results => results.every(x => x));

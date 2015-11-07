@@ -87,12 +87,12 @@ export class QueryValidator {
 
   // Return a promise that resolves to true or false if the specified RQ
   // matched or didn't match any pattern RQ in the whitelist.
-  queryInWhitelist(rq, queryAst, session) {
+  queryInWhitelist(rq, ast, session) {
     const matchesPatternRQ = (patternRQ, index) => {
       if (patternRQ.isRethinkQueryTerm) {
         return queryMatches(patternRQ, rq, session);
       } else if (isReqlAstTerm(patternRQ)) {
-        return astQueryMatches(patternRQ, queryAst, session);
+        return astQueryMatches(patternRQ, ast.query, ast.queryOptions, session);
       } else {
         throw new Error(`Invalid whitelist query: index=${index}`);
       }
@@ -116,7 +116,7 @@ export class QueryValidator {
   validateQuery(token, query, queryOptions, session, logFn) {
     return Promise.try(reqlJsonToAst, [{query, queryOptions}]).then(ast => {
       return Promise.try(parseQuery, [query, queryOptions]).then(rq => {
-        return this.queryInWhitelist(rq, ast.query, session).then(inWhitelist => {
+        return this.queryInWhitelist(rq, ast, session).then(inWhitelist => {
           const allow = this.unsafelyAllowAnyQuery || inWhitelist;
           const allowText = allow ? colors.green('[ALLOW]') : colors.red('[DENY]');
           const logMsgParts = [allowText, ' ', ast.query.toString()];
