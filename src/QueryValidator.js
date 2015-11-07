@@ -4,6 +4,7 @@ import Promise from 'bluebird';
 import protodef from 'rethinkdb/proto-def';
 import {parseQuery, rqToString} from './QueryParser';
 import {reqlJsonToAst} from './ReqlAstBuilder';
+import {isReqlAstTerm, astQueryMatches} from './WhitelistSyntax';
 
 const QueryType = protodef.Query.QueryType;
 const {START, CONTINUE, STOP, NOREPLY_WAIT} = QueryType;
@@ -86,8 +87,16 @@ export class QueryValidator {
 
   // Return a promise that resolves to true or false if the specified RQ
   // matched or didn't match any pattern RQ in the whitelist.
-  queryInWhitelist(rq, session) {
-    const matchesPatternRQ = patternRQ => queryMatches(patternRQ, rq, session);
+  queryInWhitelist(rq, queryAst, session) {
+    const matchesPatternRQ = (patternRQ, index) => {
+      if (patternRQ.isRethinkQueryTerm) {
+        return queryMatches(patternRQ, rq, session);
+      } else if (isReqlAstTerm(patternRQ)) {
+        return astQueryMatches(patternRQ, queryAst, session);
+      } else {
+        throw new Error(`Invalid whitelist query: index=${index}`);
+      }
+    };
     const matchPromises = this.queryWhitelist.map(matchesPatternRQ);
     const matchArrayPromise = Promise.all(matchPromises);
     const hasAnyTrueValue = array => array.some(x => x);
@@ -107,7 +116,7 @@ export class QueryValidator {
   validateQuery(token, query, queryOptions, session, logFn) {
     return Promise.try(reqlJsonToAst, [query]).then(queryAst => {
       return Promise.try(parseQuery, [query, queryOptions]).then(rq => {
-        return this.queryInWhitelist(rq, session).then(inWhitelist => {
+        return this.queryInWhitelist(rq, queryAst, session).then(inWhitelist => {
           const allow = this.unsafelyAllowAnyQuery || inWhitelist;
           const allowText = allow ? colors.green('[ALLOW]') : colors.red('[DENY]');
           const logMsgParts = [allowText, ' ', queryAst.toString()];
