@@ -180,7 +180,7 @@ will remain experimental.
 * Both RQ and vanilla syntax chain `.validate(fn)` after queries to add
   validation functions.
 * Both RQ and vanilla syntax chain `.opt(key, value)` after queries to set
-  query options like `db and `durability`.
+  query options like `db` and `durability`.
   * However, the `value` argument can differ in syntax: `.opt("db",
     RQ.DB("test"))` vs `.opt("db", r.db("test")`.
 * `RQ.ref(refName)` in the RQ syntax has been changed to `RP.ref(refName)`
