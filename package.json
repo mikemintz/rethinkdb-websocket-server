@@ -20,7 +20,7 @@
     "bluebird": "^2.9.27",
     "colors": "^1.1.0",
     "moment": "^2.10.3",
-    "rethinkdb": "^2.0.0",
+    "rethinkdb": "^2.2.0",
     "ws": "^0.8.0"
   },
   "devDependencies": {
@@ -30,6 +30,6 @@
     "eslint": "^0.22.1",
     "mocha": "^2.2.5",
     "reqlite": "^2.0.4",
-    "rethinkdb-websocket-client": "^0.4.0"
+    "rethinkdb-websocket-client": "^0.4.5"
   }
 }
