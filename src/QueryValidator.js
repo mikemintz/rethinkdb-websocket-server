@@ -120,7 +120,7 @@ export class QueryValidator {
           const allow = this.unsafelyAllowAnyQuery || inWhitelist;
           const allowText = allow ? colors.green('[ALLOW]') : colors.red('[DENY]');
           const logMsgParts = [allowText, ' ', ast.query.toString()];
-          Object.keys(ast.queryOptions).forEach(x => {
+          Object.keys(ast.queryOptions || {}).forEach(x => {
             const key = JSON.stringify(x);
             const value = ast.queryOptions[x].toString();
             logMsgParts.push('.opt(', key, ', ', value, ')');
