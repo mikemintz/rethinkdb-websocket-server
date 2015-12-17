@@ -132,7 +132,8 @@ const rqToString = (query, initialIndentLevel = 0, spacesPerIndent = 0) => {
 const parseQuery = (query, queryOptions) => {
   const parseTerm = data => {
     if (isArr(data)) {
-      const [termId, args, options] = data;
+      let [termId, args, options] = data;
+      if (!args) args = [];
       ensure(data.length <= 3, 'Too many array elements');
       ensure(isArr(args), 'Invalid args type');
       ensure(options === undefined || isObj(options), 'Invalid options type');
