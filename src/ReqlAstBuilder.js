@@ -39,7 +39,10 @@ const buildAstTerm = (termId, args, options) => {
 // protocol. May throw an exception if the term is ill formed.
 const reqlJsonToAst = term => {
   if (isArr(term)) {
-    const [termId, args, options] = term;
+    let [termId, args, options] = term;
+    if (args === undefined) {
+      args = [];
+    }
     ensure(term.length <= 3, 'Too many array elements');
     ensure(isArr(args), 'Invalid args type');
     ensure(options === undefined || isObj(options), 'Invalid options type');
