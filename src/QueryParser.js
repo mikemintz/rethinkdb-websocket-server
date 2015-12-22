@@ -133,7 +133,9 @@ const parseQuery = (query, queryOptions) => {
   const parseTerm = data => {
     if (isArr(data)) {
       let [termId, args, options] = data;
-      if (!args) args = [];
+      if (args === undefined) {
+        args = [];
+      }
       ensure(data.length <= 3, 'Too many array elements');
       ensure(isArr(args), 'Invalid args type');
       ensure(options === undefined || isObj(options), 'Invalid options type');

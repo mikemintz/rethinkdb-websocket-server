@@ -40,7 +40,9 @@ const buildAstTerm = (termId, args, options) => {
 const reqlJsonToAst = term => {
   if (isArr(term)) {
     let [termId, args, options] = term;
-    if (!args) args = [];
+    if (args === undefined) {
+      args = [];
+    }
     ensure(term.length <= 3, 'Too many array elements');
     ensure(isArr(args), 'Invalid args type');
     ensure(options === undefined || isObj(options), 'Invalid options type');
