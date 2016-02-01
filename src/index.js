@@ -47,15 +47,25 @@ export function listen({
   // validation.
   sessionCreator = (urlQueryParams) => Promise.resolve({}),
 
+  // Specify how much to log to the console
+  // - 'all' logs everything
+  // - 'denied' logs queries that aren't in the query whitelist
+  // - 'none' logs nothing, other than exception stack traces
+  loggingMode = 'all',
+
 }) {
   const wsServer = new WebSocketServer({
     server: httpServer,
     path: httpPath,
     perMessageDeflate: false, // necessary due to https://github.com/websockets/ws/issues/523
   });
-  const queryValidator = new QueryValidator({queryWhitelist, unsafelyAllowAnyQuery});
+  const queryValidator = new QueryValidator({
+    queryWhitelist,
+    unsafelyAllowAnyQuery,
+    loggingMode,
+  });
   wsServer.on('connection', webSocket => {
-    const connection = new Connection(queryValidator, webSocket);
+    const connection = new Connection(queryValidator, webSocket, loggingMode);
     connection.start({sessionCreator, dbHost, dbPort});
   });
 }

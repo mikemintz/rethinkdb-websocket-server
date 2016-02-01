@@ -80,9 +80,10 @@ const queryMatches = (patternRQ, actualRQ, session) => {
 
 
 export class QueryValidator {
-  constructor({queryWhitelist, unsafelyAllowAnyQuery}) {
+  constructor({queryWhitelist, unsafelyAllowAnyQuery, loggingMode}) {
     this.queryWhitelist = queryWhitelist;
     this.unsafelyAllowAnyQuery = unsafelyAllowAnyQuery;
+    this.loggingMode = loggingMode;
   }
 
   // Return a promise that resolves to true or false if the specified RQ
@@ -113,6 +114,8 @@ export class QueryValidator {
   // whether they were allowed. Also log a pretty parsed version of queries
   // missing from the whitelist so that developers can easily copy those into
   // their whitelist source file as they write new queries in the frontend.
+  // Logging behavior depends on the value of loggingMode (see comment in
+  // index.js).
   validateQuery(token, query, queryOptions, session, logFn) {
     return Promise.try(reqlJsonToAst, [{query, queryOptions}]).then(ast => {
       return Promise.try(parseQuery, [query, queryOptions]).then(rq => {
@@ -128,7 +131,14 @@ export class QueryValidator {
           if (!inWhitelist) {
             logMsgParts.push('\n\n', colors.cyan(rqToString(rq, 1, 2)), ',\n');
           }
-          logFn(logMsgParts.join(''), token);
+          const shouldLog = (
+            this.loggingMode === 'all'
+          ) || (
+            this.loggingMode === 'denied' && !inWhitelist
+          );
+          if (shouldLog) {
+            logFn(logMsgParts.join(''), token);
+          }
           return Promise.resolve(allow);
         });
       });
@@ -150,7 +160,9 @@ export class QueryValidator {
         return this.validateQuery(token, query, queryOptions, session, logFn);
       } else if (type === CONTINUE || type === STOP || type === NOREPLY_WAIT) {
         if (query === undefined && queryOptions === undefined) {
-          logFn(queryTypeString(type), token);
+          if (this.loggingMode === 'all') {
+            logFn(queryTypeString(type), token);
+          }
           return true;
         } else {
           throw new Error(`Invalid ${queryTypeString(type)}`);

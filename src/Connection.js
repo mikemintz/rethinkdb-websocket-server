@@ -10,9 +10,10 @@ import url from 'url';
 // start() is called, it will forward traffic in both directions until either
 // side disconnects. Each incoming WebSocket spawns a new outgoing TCP socket.
 export class Connection {
-  constructor(queryValidator, webSocket) {
+  constructor(queryValidator, webSocket, loggingMode) {
     this.queryValidator = queryValidator;
     this.webSocket = webSocket;
+    this.loggingMode = loggingMode;
     this.remoteAddress = webSocket._socket.remoteAddress;
     this.remotePort = webSocket._socket.remotePort;
   }
@@ -28,7 +29,9 @@ export class Connection {
     this.dbSocket = net.createConnection(dbPort, dbHost);
     this.setupDbSocket();
     this.setupWebSocket();
-    this.log('Connect');
+    if (this.loggingMode === 'all') {
+      this.log('Connect');
+    }
   }
 
   setupDbSocket() {
@@ -46,7 +49,9 @@ export class Connection {
       this.cleanup();
     });
     this.dbSocket.on('close', () => {
-      this.log('dbSocket closed');
+      if (this.loggingMode === 'all') {
+        this.log('dbSocket closed');
+      }
       this.cleanup();
     });
     this.dbSocket.on('error', e => {
@@ -65,7 +70,9 @@ export class Connection {
       }
     });
     this.webSocket.on('close', () => {
-      this.log('webSocket closed');
+      if (this.loggingMode === 'all') {
+        this.log('webSocket closed');
+      }
       this.cleanup();
     });
     this.webSocket.on('error', e => {

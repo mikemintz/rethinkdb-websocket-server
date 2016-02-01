@@ -32,6 +32,7 @@ function setupInstances({
       queryWhitelist,
       unsafelyAllowAnyQuery,
       sessionCreator,
+      loggingMode: 'none',
     };
     WsServer.listen(wsServerOpts);
     httpServer.on('listening', () => {
