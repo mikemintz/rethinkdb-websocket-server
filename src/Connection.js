@@ -39,7 +39,12 @@ export class Connection {
     this.dbSocket.on('data', data => {
       if (!this.isClosed) {
         try {
-          this.webSocket.send(data, {binary: true});
+          if (this.webSocket.protocol === 'base64') {
+            const b64EncodedData = (new Buffer(data)).toString('base64');
+            this.webSocket.send(b64EncodedData);
+          } else {
+            this.webSocket.send(data, {binary: true});
+          }
         } catch (e) {
           this.cleanupAndLogErr('Error recv dbSocket data', e);
         }
@@ -167,7 +172,9 @@ export class Connection {
   }
 
   handleWsMessage(msg) {
-    this.wsInBuffer = Buffer.concat([this.wsInBuffer, msg]);
+    const isBase64 = typeof msg === 'string' && this.webSocket.protocol === 'base64';
+    const incomingBuffer = isBase64 ? new Buffer(msg, 'base64') : msg;
+    this.wsInBuffer = Buffer.concat([this.wsInBuffer, incomingBuffer]);
     let keepGoing = true;
     while (keepGoing) {
       let bytesConsumed = this.processNextMessage(this.wsInBuffer);
