@@ -2,7 +2,7 @@ import colors from 'colors/safe';
 import {isArr, isObj, arrEq, objEq} from './util';
 import Promise from 'bluebird';
 import protodef from 'rethinkdb/proto-def';
-import {parseQuery, rqToString} from './QueryParser';
+import {parseQuery} from './QueryParser';
 import {reqlJsonToAst} from './ReqlAstBuilder';
 import {isReqlAstTerm, astQueryMatches} from './WhitelistSyntax';
 
@@ -128,9 +128,6 @@ export class QueryValidator {
             const value = ast.queryOptions[x].toString();
             logMsgParts.push('.opt(', key, ', ', value, ')');
           });
-          if (!inWhitelist) {
-            logMsgParts.push('\n\n', colors.cyan(rqToString(rq, 1, 2)), ',\n');
-          }
           const shouldLog = (
             this.loggingMode === 'all'
           ) || (
