@@ -1,5 +1,6 @@
 import protodef from 'rethinkdb/proto-def';
 import {isArr, isObj, ensure, repeatString} from './util';
+import {deprecate} from 'util';
 
 // Map RethinkDB AST term ids to readable names. Add a special "query" term
 // with id="query" and name="query".
@@ -32,8 +33,16 @@ Object.keys(protodef.Term.TermType).forEach(termName => {
 // When manually creating pattern queries, you will want to make use of pattern
 // functions, RQ.ref(), and validate() functions. See QueryValidator.js for
 // more information.
+//
+// This syntax is deprecated as of 0.4 and will be removed in a future version.
+// Use vanilla ReQL syntax with RP from WhitelistSyntax.js instead.
 
-const RQ = (...args) => RQ[QUERY_TERM_ID](...args);
+const RQ = deprecate(
+  (...args) => RQ[QUERY_TERM_ID](...args),
+  'RQ query whitelist syntax is deprecated in rethinkdb-websocket-server 0.4 ' +
+  'and will be removed in a future version. Use vanilla ReQL syntax with RP ' +
+  'instead. E.g. r.table("turtles") instead of RQ.TABLE("turtles")'
+);
 Object.keys(termIdToName).forEach(termId => {
   const termName = termIdToName[termId];
   RQ[termName] = (...args) => {

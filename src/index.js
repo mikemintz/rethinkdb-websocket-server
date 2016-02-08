@@ -15,6 +15,9 @@ export {ReqlPattern as RP} from './WhitelistSyntax';
 
 // Use RQ to construct query patterns for queryWhitelist. See QueryParser.js and
 // QueryValidator.js for more information.
+//
+// This syntax is deprecated as of 0.4 and will be removed in a future version.
+// Use vanilla ReQL syntax with RP from WhitelistSyntax.js instead.
 export {RQ} from './QueryParser';
 
 // Start a WebSocket server attached to the specified http.Server instance.
