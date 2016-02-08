@@ -18,7 +18,7 @@ disconnects.
 
 Each query sent from the WebSocket is parsed and validated before being
 forwarded to RethinkDB. This is done using a whitelist of pattern queries,
-described in the involved example below.
+described in the "Involved example" section below.
 
 The provided WebSocket server can be used in conjunction with any of the
 following clients:
@@ -72,12 +72,13 @@ when validating queries from this client.
 **Note:** in production, you should enable secure websockets so sensitive
 data is not vulnerable.
 
-As you are developing, incoming queries that don't validate against the
-whitelist will be logged to console in a format that you can copy and paste
-directly into your JavaScript source file. For dynamic queries, you'll likely
-want to generalize the pattern using `function(actual, refs, session)` terms,
-`RQ.ref()` terms, and the `.validate()` method. Using [ES6 arrow
-functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions) can make this a bit less verbose.
+As you are developing, incoming queries will be logged to console in a format
+that you can copy and paste directly into your JavaScript source file. For
+dynamic queries, you'll likely want to generalize the pattern using
+`RP.check()` terms, `RP.ref()` terms, and the `.validate()` method. Using [ES6
+arrow
+functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions)
+can make this a bit less verbose.
 
 ```js
 var express = require('express');
@@ -85,7 +86,7 @@ var http = require('http');
 var Promise = require('bluebird');
 var RethinkdbWebsocketServer = require('rethinkdb-websocket-server');
 var r = RethinkdbWebsocketServer.r;
-var RQ = RethinkdbWebsocketServer.RQ;
+var RP = RethinkdbWebsocketServer.RP;
 
 var options = {};
 options.dbHost = 'rethink01.example.com';
@@ -115,34 +116,28 @@ options.sessionCreator = function(urlQueryParams) {
 
 options.queryWhitelist = [
   // r.table('turtles').filter({herdId: curHerdId})
-  RQ(
-    RQ.FILTER(
-      RQ.TABLE("turtles"),
-      {"herdId": RQ.ref('herdId')}
-    )
-  ).opt("db", RQ.DB("test"))
-  .validate(function(refs, session) {
-    return session.curHerdId === refs.herdId;
-  }),
+  r.table('turtles')
+   .filter({"herdId": RP.ref('herdId')})
+   .opt("db", r.db("test"))
+   .validate(function(refs, session) {
+     return session.curHerdId === refs.herdId;
+   }),
 
   // r.table('turtles').insert({herdId: 'alpha-squadron', name: 'Speedy'})
-  RQ(
-    RQ.INSERT(
-      RQ.TABLE("turtles"),
-      {
-        "herdId": RQ.ref('herdId'),
-        "name": function(actual, refs, session) {
-          return typeof actual === 'string' && actual.trim();
-        },
-      }
-    )
-  ).opt("db", RQ.DB("test"))
-  .validate(function(refs) {
-    var herdId = refs.herdId;
-    if (typeof herdId !== 'string') return false;
-    var validHerdQuery = r.table('herds').get(herdId).ne(null);
-    return runQuery(validHerdQuery);
-  }),
+  r.table('turtles')
+   .insert({
+     "herdId": RP.ref('herdId'),
+     "name": RP.check(function(actual, refs, session) {
+       return typeof actual === 'string' && actual.trim();
+     }),
+   })
+   .opt("db", r.db("test"))
+   .validate(function(refs) {
+     var herdId = refs.herdId;
+     if (typeof herdId !== 'string') return false;
+     var validHerdQuery = r.table('herds').get(herdId).ne(null);
+     return runQuery(validHerdQuery);
+   }),
 ];
 
 var app = express();
@@ -155,27 +150,43 @@ RethinkdbWebsocketServer.listen(options);
 httpServer.listen(8000);
 ```
 
-## Query whitelist syntax
+Written a bit more concisely and with some ES6 syntax, the whitelist becomes:
+
+```js
+options.queryWhitelist = [
+  r.table('turtles')
+   .filter({herdId: RP.ref('herdId')})
+   .opt("db", r.db("test"))
+   .validate(({herdId}, session) => session.curHerdId === herdId),
+
+  r.table('turtles')
+   .insert({
+     herdId: RP.ref('herdId'),
+     name: RP.check(x => typeof x === 'string' && x.trim())
+   })
+   .opt("db", r.db("test"))
+   .validate(({herdId}) => (
+     typeof herdId !== 'string' &&
+     runQuery(r.table('herds').get(herdId).ne(null))
+   )),
+];
+```
+
+## Upgrade guide
+
+Most new versions of rethinkdb-websocket-server are backwards compatible with previous versions. Below are exceptions with breaking changes:
+
+### Upgrading to 0.3 or 0.4 (query whitelist syntax)
 
 Before rethinkdb-websocket-server 0.3.0, the syntax for expressing whitelist
-queries closely reflected the RethinkDB JSON protocol sent over the wire. The
-`RQ` object made this a bit more readable, e.g. `RQ.TABLE("turtles")` instead
-of `[15, ["turtles"]]`.
+queries closely reflected the RethinkDB JSON protocol sent over the wire, using
+the provided `RQ` object to construct query patterns. This older RQ syntax was
+deprecated in 0.4.0 and will ultimately be removed.
 
-Starting with version 0.3.0, there is a new experimental "vanilla" syntax that
-looks much closer to ordinary ReQL. As this becomes more stable, the vanilla
-syntax will be recommended and the old RQ syntax will be deprecated and
-ultimately removed.
-
-In the 0.3 releases, the whitelist can contain pattern queries from either
+In the 0.3 and 0.4 releases, the whitelist can contain pattern queries from either
 syntax. This makes it easy to migrate queries to the new syntax one at a time.
-Incoming queries are logged in both formats.
 
-At least until there is a stable RethinkDB release with the [toString()
-fix](https://github.com/rethinkdb/rethinkdb/issues/2372), the vanilla syntax
-will remain experimental.
-
-### RQ/vanilla syntax comparison
+#### RQ/vanilla syntax comparison
 
 * Both RQ and vanilla syntax chain `.validate(fn)` after queries to add
   validation functions.
@@ -199,59 +210,41 @@ will remain experimental.
   * `RQ(RQ.FILTER(RQ.TABLE("turtles"), {"herdId": RQ.ref('herdId')}))`
   * `r.table("turtles").filter({"herdId": RP.ref('herdId')})`
 
-### Vanilla syntax example
+#### Old RQ syntax example
 
-Below is the query whitelist excerpt of the "involved example" above, rewritten
-with the vanilla syntax:
-
-```js
-var RP = RethinkdbWebsocketServer.RP;
-
-options.queryWhitelist = [
-  r.table('turtles')
-   .filter({"herdId": RP.ref('herdId')})
-   .opt("db", r.db("test"))
-   .validate(function(refs, session) {
-     return session.curHerdId === refs.herdId;
-   }),
-
-  r.table('turtles')
-   .insert({
-     "herdId": RP.ref('herdId'),
-     "name": RP.check(function(actual, refs, session) {
-       return typeof actual === 'string' && actual.trim();
-     }),
-   })
-   .opt("db", r.db("test"))
-   .validate(function(refs) {
-     var herdId = refs.herdId;
-     if (typeof herdId !== 'string') return false;
-     var validHerdQuery = r.table('herds').get(herdId).ne(null);
-     return runQuery(validHerdQuery);
-   }),
-];
-```
-
-Written a bit more concisely, and with some ES6 syntax, this becomes:
+Below is the query whitelist excerpt of the "Involved example" section above,
+as it used to be written using the older RQ syntax:
 
 ```js
-var {RP} = RethinkdbWebsocketServer;
+var RQ = RethinkdbWebsocketServer.RQ;
 
 options.queryWhitelist = [
-  r.table('turtles')
-   .filter({herdId: RP.ref('herdId')})
-   .opt("db", r.db("test"))
-   .validate(({herdId}, session) => session.curHerdId === herdId),
+  RQ(
+    RQ.FILTER(
+      RQ.TABLE("turtles"),
+      {"herdId": RQ.ref('herdId')}
+    )
+  ).opt("db", RQ.DB("test"))
+  .validate(function(refs, session) {
+    return session.curHerdId === refs.herdId;
+  }),
 
-  r.table('turtles')
-   .insert({
-     herdId: RP.ref('herdId'),
-     name: RP.check(x => typeof x === 'string' && x.trim())
-   })
-   .opt("db", r.db("test"))
-   .validate(({herdId}) => (
-     typeof herdId !== 'string' &&
-     runQuery(r.table('herds').get(herdId).ne(null))
-   )),
+  RQ(
+    RQ.INSERT(
+      RQ.TABLE("turtles"),
+      {
+        "herdId": RQ.ref('herdId'),
+        "name": function(actual, refs, session) {
+          return typeof actual === 'string' && actual.trim();
+        },
+      }
+    )
+  ).opt("db", RQ.DB("test"))
+  .validate(function(refs) {
+    var herdId = refs.herdId;
+    if (typeof herdId !== 'string') return false;
+    var validHerdQuery = r.table('herds').get(herdId).ne(null);
+    return runQuery(validHerdQuery);
+  }),
 ];
 ```
