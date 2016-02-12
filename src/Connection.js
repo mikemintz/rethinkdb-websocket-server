@@ -27,7 +27,7 @@ export class Connection {
     this.handshakeComplete = false;
     this.isClosed = false;
     this.dbSocket = net.createConnection(dbPort, dbHost);
-    if (dbAuthKey !== null) {
+    if (dbAuthKey !== undefined) {
       this.dbAuthKeyBuf = new Buffer(dbAuthKey, 'base64');
     }
     this.setupDbSocket();
