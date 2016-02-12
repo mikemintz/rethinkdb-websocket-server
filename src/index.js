@@ -38,6 +38,9 @@ export function listen({
   // RethinkDB port to connect to
   dbPort = 28015,
 
+  // RethinkDB authKey: null if not required
+  dbAuthKey = null,
+
   // List of pattern RQs, where an incoming query must match at least one
   // (see QueryValidator.js)
   queryWhitelist = [],
@@ -69,6 +72,6 @@ export function listen({
   });
   wsServer.on('connection', webSocket => {
     const connection = new Connection(queryValidator, webSocket, loggingMode);
-    connection.start({sessionCreator, dbHost, dbPort});
+    connection.start({sessionCreator, dbHost, dbPort, dbAuthKey});
   });
 }

@@ -18,7 +18,7 @@ export class Connection {
     this.remotePort = webSocket._socket.remotePort;
   }
 
-  start({sessionCreator, dbHost, dbPort}) {
+  start({sessionCreator, dbHost, dbPort, dbAuthKey}) {
     const urlQueryParams = url.parse(this.webSocket.upgradeReq.url, true).query;
     this.sessionPromise = sessionCreator(urlQueryParams).catch(e => {
       this.cleanupAndLogErr('Error in sessionCreator', e);
@@ -27,6 +27,9 @@ export class Connection {
     this.handshakeComplete = false;
     this.isClosed = false;
     this.dbSocket = net.createConnection(dbPort, dbHost);
+    if (dbAuthKey !== null) {
+      this.dbAuthKeyBuf = new Buffer(dbAuthKey, 'base64');
+    }
     this.setupDbSocket();
     this.setupWebSocket();
     if (this.loggingMode === 'all') {
@@ -151,7 +154,16 @@ export class Connection {
           return 0;
         }
         const handshakeLength = 12 + keyLength;
-        this.dbSocket.write(buf.slice(0, handshakeLength), 'binary');
+        let outBuf;
+        if (typeof this.dbAuthKeyBuf !== undefined) {
+          const verBuf = buf.slice(0, 4);
+          const keySizeBuf = new Buffer(4);
+          keySizeBuf.writeUInt32LE(this.dbAuthKeyBuf.length, 0);
+          outBuf = Buffer.concat([verBuf, keySizeBuf, this.dbAuthKeyBuf]);
+        } else {
+          outBuf = buf.slice(0, handshakeLength);
+        }
+        this.dbSocket.write(outBuf, outBuf.length, 'binary');
         this.handshakeComplete = true;
         return handshakeLength;
       }
