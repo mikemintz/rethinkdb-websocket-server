@@ -66,7 +66,7 @@ var Connection = (function () {
       this.handshakeComplete = false;
       this.isClosed = false;
       this.dbSocket = _net2['default'].createConnection(dbPort, dbHost);
-      if (dbAuthKey !== undefined) {
+      if (dbAuthKey !== null) {
         this.dbAuthKeyBuf = new Buffer(dbAuthKey, 'base64');
       }
       this.setupDbSocket();
