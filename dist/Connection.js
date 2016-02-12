@@ -66,9 +66,7 @@ var Connection = (function () {
       this.handshakeComplete = false;
       this.isClosed = false;
       this.dbSocket = _net2['default'].createConnection(dbPort, dbHost);
-      if (dbAuthKey !== null) {
-        this.dbAuthKeyBuf = new Buffer(dbAuthKey, 'base64');
-      }
+      this.dbAuthKey = dbAuthKey;
       this.setupDbSocket();
       this.setupWebSocket();
       if (this.loggingMode === 'all') {
@@ -209,11 +207,13 @@ var Connection = (function () {
           }
           var handshakeLength = 12 + keyLength;
           var outBuf = undefined;
-          if (typeof this.dbAuthKeyBuf !== undefined) {
+          if (this.dbAuthKey !== null) {
             var verBuf = buf.slice(0, 4);
             var keySizeBuf = new Buffer(4);
-            keySizeBuf.writeUInt32LE(this.dbAuthKeyBuf.length, 0);
-            outBuf = Buffer.concat([verBuf, keySizeBuf, this.dbAuthKeyBuf]);
+            keySizeBuf.writeUInt32LE(this.dbAuthKey.length, 0);
+            var authKeyBuf = new Buffer(this.dbAuthKey);
+            var jsonBuf = buf.slice(8, 4);
+            outBuf = Buffer.concat([verBuf, keySizeBuf, authKeyBuf, jsonBuf]);
           } else {
             outBuf = buf.slice(0, handshakeLength);
           }
