@@ -2,6 +2,7 @@ import colors from 'colors/safe';
 import {errToString} from './util';
 import moment from 'moment';
 import net from 'net';
+import tls from 'tls';
 import protodef from 'rethinkdb/proto-def';
 import url from 'url';
 
@@ -18,7 +19,7 @@ export class Connection {
     this.remotePort = webSocket._socket.remotePort;
   }
 
-  start({sessionCreator, dbHost, dbPort, dbAuthKey}) {
+  start({sessionCreator, dbHost, dbPort, dbAuthKey, dbSecure, dbCACert}) {
     const urlQueryParams = url.parse(this.webSocket.upgradeReq.url, true).query;
     this.sessionPromise = sessionCreator(urlQueryParams).catch(e => {
       this.cleanupAndLogErr('Error in sessionCreator', e);
@@ -26,7 +27,18 @@ export class Connection {
     this.wsInBuffer = new Buffer(0);
     this.handshakeComplete = false;
     this.isClosed = false;
-    this.dbSocket = net.createConnection(dbPort, dbHost);
+    if (dbSecure) {
+      let options = {
+        host: dbHost,
+        port: dbPort
+      };
+      if (dbCACert !== null) {
+        options.ca = new Buffer(dbCACert);
+      }
+      this.dbSocket = tls.connect(options);
+    } else {
+      this.dbSocket = net.createConnection(dbPort, dbHost);
+    }
     this.dbAuthKey = dbAuthKey;
     this.setupDbSocket();
     this.setupWebSocket();

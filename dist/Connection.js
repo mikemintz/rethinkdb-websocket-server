@@ -24,6 +24,10 @@ var _net = require('net');
 
 var _net2 = _interopRequireDefault(_net);
 
+var _tls = require('tls');
+
+var _tls2 = _interopRequireDefault(_tls);
+
 var _rethinkdbProtoDef = require('rethinkdb/proto-def');
 
 var _rethinkdbProtoDef2 = _interopRequireDefault(_rethinkdbProtoDef);
@@ -57,6 +61,8 @@ var Connection = (function () {
       var dbHost = _ref.dbHost;
       var dbPort = _ref.dbPort;
       var dbAuthKey = _ref.dbAuthKey;
+      var dbSecure = _ref.dbSecure;
+      var dbCACert = _ref.dbCACert;
 
       var urlQueryParams = _url2['default'].parse(this.webSocket.upgradeReq.url, true).query;
       this.sessionPromise = sessionCreator(urlQueryParams)['catch'](function (e) {
@@ -65,7 +71,18 @@ var Connection = (function () {
       this.wsInBuffer = new Buffer(0);
       this.handshakeComplete = false;
       this.isClosed = false;
-      this.dbSocket = _net2['default'].createConnection(dbPort, dbHost);
+      if (dbSecure) {
+        var options = {
+          host: dbHost,
+          port: dbPort
+        };
+        if (dbCACert !== null) {
+          options.ca = new Buffer(dbCACert);
+        }
+        this.dbSocket = _tls2['default'].connect(options);
+      } else {
+        this.dbSocket = _net2['default'].createConnection(dbPort, dbHost);
+      }
       this.dbAuthKey = dbAuthKey;
       this.setupDbSocket();
       this.setupWebSocket();

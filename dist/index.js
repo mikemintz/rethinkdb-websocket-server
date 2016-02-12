@@ -82,6 +82,16 @@ function listen(_ref) {
 
   // RethinkDB authKey: null if not required
   dbAuthKey = _ref$dbAuthKey === undefined ? null : _ref$dbAuthKey;
+  var _ref$dbSecure = _ref.dbSecure;
+  var
+
+  // Set true to use SSL for the RethinkDB socket
+  dbSecure = _ref$dbSecure === undefined ? false : _ref$dbSecure;
+  var _ref$dbCACert = _ref.dbCACert;
+  var
+
+  // CA Certificate for the SSL connection, if required
+  dbCACert = _ref$dbCACert === undefined ? null : _ref$dbCACert;
   var _ref$queryWhitelist = _ref.queryWhitelist;
   var
 
@@ -123,6 +133,6 @@ function listen(_ref) {
   });
   wsServer.on('connection', function (webSocket) {
     var connection = new _Connection.Connection(queryValidator, webSocket, loggingMode);
-    connection.start({ sessionCreator: sessionCreator, dbHost: dbHost, dbPort: dbPort, dbAuthKey: dbAuthKey });
+    connection.start({ sessionCreator: sessionCreator, dbHost: dbHost, dbPort: dbPort, dbAuthKey: dbAuthKey, dbSecure: dbSecure, dbCACert: dbCACert });
   });
 }
