@@ -18,11 +18,12 @@ export class Connection {
     this.remotePort = webSocket._socket.remotePort;
   }
 
-  start({sessionCreator, dbHost, dbPort}) {
+  start({sessionCreator, dbHost, dbPort, dbAuthKey}) {
     const urlQueryParams = url.parse(this.webSocket.upgradeReq.url, true).query;
     this.sessionPromise = sessionCreator(urlQueryParams).catch(e => {
       this.cleanupAndLogErr('Error in sessionCreator', e);
     });
+    this.dbAuthKey = dbAuthKey;
     this.wsInBuffer = new Buffer(0);
     this.handshakeComplete = false;
     this.isClosed = false;
@@ -156,7 +157,13 @@ export class Connection {
       if (buf.length >= 12) {
         const clientHandshakeLength = this.validateClientHandshake(buf);
         if (clientHandshakeLength > 0) {
-          this.dbSocket.write(buf.slice(0, clientHandshakeLength), 'binary');
+          const authKey = this.dbAuthKey || '';
+          const outBuf = new Buffer(12 + authKey.length);
+          outBuf.writeUInt32LE(protodef.VersionDummy.Version.V0_4, 0);
+          outBuf.writeUInt32LE(authKey.length, 4);
+          outBuf.write(authKey, 8);
+          outBuf.writeUInt32LE(protodef.VersionDummy.Protocol.JSON, 8 + authKey.length);
+          this.dbSocket.write(outBuf, 'binary');
           this.handshakeComplete = true;
           return clientHandshakeLength;
         } else {
