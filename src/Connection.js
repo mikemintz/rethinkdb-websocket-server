@@ -132,28 +132,36 @@ export class Connection {
     });
   }
 
+  validateClientHandshake(buf) {
+    const protocolVersion = buf.readUInt32LE(0);
+    if (protocolVersion !== protodef.VersionDummy.Version.V0_4) {
+      this.cleanupAndLogErr('Invalid protocolVersion ' + protocolVersion);
+      return 0;
+    }
+    const keyLength = buf.readUInt32LE(4);
+    if (keyLength !== 0) {
+      this.cleanupAndLogErr('Auth key not supported');
+      return 0;
+    }
+    const protocolType = buf.readUInt32LE(8);
+    if (protocolType !== protodef.VersionDummy.Protocol.JSON) {
+      this.cleanupAndLogErr('Protocol type not supported ' + protocolType);
+      return 0;
+    }
+    return 12;
+  }
+
   processNextMessage(buf) {
     if (!this.handshakeComplete) {
       if (buf.length >= 12) {
-        const protocolVersion = buf.readUInt32LE(0);
-        if (protocolVersion !== protodef.VersionDummy.Version.V0_4) {
-          this.cleanupAndLogErr('Invalid protocolVersion ' + protocolVersion);
+        const clientHandshakeLength = this.validateClientHandshake(buf);
+        if (clientHandshakeLength > 0) {
+          this.dbSocket.write(buf.slice(0, clientHandshakeLength), 'binary');
+          this.handshakeComplete = true;
+          return clientHandshakeLength;
+        } else {
           return 0;
         }
-        const keyLength = buf.readUInt32LE(4);
-        if (keyLength !== 0) {
-          this.cleanupAndLogErr('Auth key not supported');
-          return 0;
-        }
-        const protocolType = buf.readUInt32LE(8 + keyLength);
-        if (protocolType !== protodef.VersionDummy.Protocol.JSON) {
-          this.cleanupAndLogErr('Protocol type not supported ' + protocolType);
-          return 0;
-        }
-        const handshakeLength = 12 + keyLength;
-        this.dbSocket.write(buf.slice(0, handshakeLength), 'binary');
-        this.handshakeComplete = true;
-        return handshakeLength;
       }
     } else {
       if (buf.length >= 12) {
