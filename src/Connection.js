@@ -24,6 +24,7 @@ export class Connection {
     this.sessionPromise = sessionCreator(urlQueryParams).catch(e => {
       this.cleanupAndLogErr('Error in sessionCreator', e);
     });
+    this.dbAuthKey = dbAuthKey;
     this.wsInBuffer = new Buffer(0);
     this.handshakeComplete = false;
     this.isClosed = false;
@@ -145,39 +146,42 @@ export class Connection {
     });
   }
 
+  validateClientHandshake(buf) {
+    const protocolVersion = buf.readUInt32LE(0);
+    if (protocolVersion !== protodef.VersionDummy.Version.V0_4) {
+      this.cleanupAndLogErr('Invalid protocolVersion ' + protocolVersion);
+      return 0;
+    }
+    const keyLength = buf.readUInt32LE(4);
+    if (keyLength !== 0) {
+      this.cleanupAndLogErr('Auth key not supported');
+      return 0;
+    }
+    const protocolType = buf.readUInt32LE(8);
+    if (protocolType !== protodef.VersionDummy.Protocol.JSON) {
+      this.cleanupAndLogErr('Protocol type not supported ' + protocolType);
+      return 0;
+    }
+    return 12;
+  }
+
   processNextMessage(buf) {
     if (!this.handshakeComplete) {
       if (buf.length >= 12) {
-        const protocolVersion = buf.readUInt32LE(0);
-        if (protocolVersion !== protodef.VersionDummy.Version.V0_4) {
-          this.cleanupAndLogErr('Invalid protocolVersion ' + protocolVersion);
-          return 0;
-        }
-        const keyLength = buf.readUInt32LE(4);
-        if (keyLength !== 0) {
-          this.cleanupAndLogErr('Auth key not supported');
-          return 0;
-        }
-        const protocolType = buf.readUInt32LE(8 + keyLength);
-        if (protocolType !== protodef.VersionDummy.Protocol.JSON) {
-          this.cleanupAndLogErr('Protocol type not supported ' + protocolType);
-          return 0;
-        }
-        const handshakeLength = 12 + keyLength;
-        let outBuf;
-        if (this.dbAuthKey !== null) {
-          const verBuf = buf.slice(0, 4);
-          const keySizeBuf = new Buffer(4);
-          keySizeBuf.writeUInt32LE(this.dbAuthKey.length, 0);
-          const authKeyBuf = new Buffer(this.dbAuthKey);
-          const jsonBuf = buf.slice(8, 4);
-          outBuf = Buffer.concat([verBuf, keySizeBuf, authKeyBuf, jsonBuf]);
+        const clientHandshakeLength = this.validateClientHandshake(buf);
+        if (clientHandshakeLength > 0) {
+          const authKey = this.dbAuthKey || '';
+          const outBuf = new Buffer(12 + authKey.length);
+          outBuf.writeUInt32LE(protodef.VersionDummy.Version.V0_4, 0);
+          outBuf.writeUInt32LE(authKey.length, 4);
+          outBuf.write(authKey, 8);
+          outBuf.writeUInt32LE(protodef.VersionDummy.Protocol.JSON, 8 + authKey.length);
+          this.dbSocket.write(outBuf, 'binary');
+          this.handshakeComplete = true;
+          return clientHandshakeLength;
         } else {
-          outBuf = buf.slice(0, handshakeLength);
+          return 0;
         }
-        this.dbSocket.write(outBuf, outBuf.length, 'binary');
-        this.handshakeComplete = true;
-        return handshakeLength;
       }
     } else {
       if (buf.length >= 12) {
