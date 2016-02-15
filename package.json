@@ -9,8 +9,8 @@
     "url": "https://github.com/mikemintz/rethinkdb-websocket-server.git"
   },
   "scripts": {
-    "test": "eslint test && mocha --compilers js:babel/register",
-    "prepublish": "eslint src && babel -d dist src"
+    "test": "node node_modules/eslint/bin/eslint.js test && node_modules/mocha/bin/mocha --compilers js:babel/register",
+    "prepublish": "node node_modules/eslint/bin/eslint.js src && node node_modules/babel/bin/babel.js -d dist src"
   },
   "main": "dist/index.js",
   "files": [

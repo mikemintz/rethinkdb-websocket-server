@@ -38,8 +38,11 @@ export function listen({
   // RethinkDB port to connect to
   dbPort = 28015,
 
-  // RethinkDB authKey for authenticated connections
+  // RethinkDB authKey: null if not required
   dbAuthKey = null,
+
+  // CA Certificate for the SSL connection, if required
+  dbSsl = null,
 
   // List of pattern RQs, where an incoming query must match at least one
   // (see QueryValidator.js)
@@ -72,6 +75,6 @@ export function listen({
   });
   wsServer.on('connection', webSocket => {
     const connection = new Connection(queryValidator, webSocket, loggingMode);
-    connection.start({sessionCreator, dbHost, dbPort, dbAuthKey});
+    connection.start({sessionCreator, dbHost, dbPort, dbAuthKey, dbSsl});
   });
 }
