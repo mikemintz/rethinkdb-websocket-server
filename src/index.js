@@ -41,6 +41,9 @@ export function listen({
   // RethinkDB authKey for authenticated connections
   dbAuthKey = null,
 
+  // For TLS connections to RethinkDB, equivalent to ssl argument in r.connect
+  dbSsl = false,
+
   // List of pattern RQs, where an incoming query must match at least one
   // (see QueryValidator.js)
   queryWhitelist = [],
@@ -72,6 +75,6 @@ export function listen({
   });
   wsServer.on('connection', webSocket => {
     const connection = new Connection(queryValidator, webSocket, loggingMode);
-    connection.start({sessionCreator, dbHost, dbPort, dbAuthKey});
+    connection.start({sessionCreator, dbHost, dbPort, dbAuthKey, dbSsl});
   });
 }
