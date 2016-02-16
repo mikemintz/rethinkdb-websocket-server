@@ -21,7 +21,8 @@ export class Connection {
 
   start({sessionCreator, dbHost, dbPort, dbAuthKey, dbSsl}) {
     const urlQueryParams = url.parse(this.webSocket.upgradeReq.url, true).query;
-    this.sessionPromise = sessionCreator(urlQueryParams).catch(e => {
+    const req = this.webSocket.upgradeReq;
+    this.sessionPromise = sessionCreator(urlQueryParams, req).catch(e => {
       this.cleanupAndLogErr('Error in sessionCreator', e);
     });
     this.dbAuthKey = dbAuthKey;
