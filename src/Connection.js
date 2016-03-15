@@ -23,6 +23,7 @@ export class Connection {
     const urlQueryParams = url.parse(this.webSocket.upgradeReq.url, true).query;
     const req = this.webSocket.upgradeReq;
     this.sessionPromise = sessionCreator(urlQueryParams, req).catch(e => {
+      this.sendWebSocketMessage('rethinkdb-websocket-server session rejected\0');
       this.cleanupAndLogErr('Error in sessionCreator', e);
     });
     this.dbAuthKey = dbAuthKey;
