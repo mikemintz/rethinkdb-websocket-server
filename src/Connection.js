@@ -49,17 +49,21 @@ export class Connection {
     }
   }
 
+  sendWebSocketMessage(data) {
+    if (this.webSocket.protocol === 'base64') {
+      const b64EncodedData = (new Buffer(data)).toString('base64');
+      this.webSocket.send(b64EncodedData);
+    } else {
+      this.webSocket.send(data, {binary: true});
+    }
+  }
+
   setupDbSocket() {
     this.dbSocket.setNoDelay();
     this.dbSocket.on('data', data => {
       if (!this.isClosed) {
         try {
-          if (this.webSocket.protocol === 'base64') {
-            const b64EncodedData = (new Buffer(data)).toString('base64');
-            this.webSocket.send(b64EncodedData);
-          } else {
-            this.webSocket.send(data, {binary: true});
-          }
+          this.sendWebSocketMessage(data);
         } catch (e) {
           this.cleanupAndLogErr('Error recv dbSocket data', e);
         }
