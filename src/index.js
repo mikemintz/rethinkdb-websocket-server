@@ -24,6 +24,9 @@ export {RQ} from './QueryParser';
 // Incoming WebSocket connections will parse incoming RethinkDB queries and
 // forward them to the specified RethinkDB TCP address. Queries that don't pass
 // validation of the queryWhitelist will not be forwarded.
+//
+// Return the underlying WebSocketServer object. This behavior is subject to change
+// if the underlying transport library used in rethinkdb-websocket-server changes.
 export function listen({
 
   // http.Server object, for new ws.Server({server: ...})
@@ -77,4 +80,5 @@ export function listen({
     const connection = new Connection(queryValidator, webSocket, loggingMode);
     connection.start({sessionCreator, dbHost, dbPort, dbAuthKey, dbSsl});
   });
+  return wsServer;
 }
