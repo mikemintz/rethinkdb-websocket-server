@@ -20,7 +20,7 @@
     "bluebird": "^2.9.27",
     "colors": "^1.1.0",
     "moment": "^2.10.3",
-    "rethinkdb": "^2.2.0",
+    "rethinkdb": "~2.2.0",
     "ws": "^0.8.0"
   },
   "devDependencies": {
