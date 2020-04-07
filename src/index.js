@@ -69,7 +69,7 @@ export function listen({
   const wsServer = new WebSocketServer({
     server: httpServer,
     path: httpPath,
-    perMessageDeflate: false, // necessary due to https://github.com/websockets/ws/issues/523
+    perMessageDeflate: true,
   });
   const queryValidator = new QueryValidator({
     queryWhitelist,
