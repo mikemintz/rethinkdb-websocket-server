@@ -27,7 +27,7 @@
     "babel": "^5.5.6",
     "babel-core": "^5.5.6",
     "babel-eslint": "^4.1.7",
-    "eslint": "^0.22.1",
+    "eslint": "^6.8.0",
     "mocha": "^2.2.5",
     "reqlite": "^2.0.4",
     "rethinkdb-websocket-client": "^0.4.5"
